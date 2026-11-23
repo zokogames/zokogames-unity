@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes">
+  <title>{{{ PRODUCT_NAME }}}</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0b0c10; }
+    #unity-container { position: fixed; inset: 0; }
+    #unity-canvas { width: 100%; height: 100%; display: block; background: #0b0c10; }
+    #unity-loading { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 240px; text-align: center; color: #e6e6e6; font: 14px system-ui, sans-serif; }
+    #unity-progress { height: 6px; margin-top: 10px; background: #2a2d36; border-radius: 3px; overflow: hidden; }
+    #unity-progress-fill { height: 100%; width: 0; background: #6ee7b7; }
+  </style>
+  <!-- The ZokoGames JS SDK must be present before the Unity build starts. -->
+  <script src="https://sdk.zokogames.com/zokogames-sdk-v1.js"></script>
+</head>
+<body>
+  <div id="unity-container">
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
+    <div id="unity-loading">
+      <div>{{{ PRODUCT_NAME }}}</div>
+      <div id="unity-progress"><div id="unity-progress-fill"></div></div>
+    </div>
+  </div>
+  <script>
+    var buildUrl = "Build";
+    var loaderUrl = buildUrl + "/{{{ LOADER_FILENAME }}}";
+    var config = {
+      dataUrl: buildUrl + "/{{{ DATA_FILENAME }}}",
+      frameworkUrl: buildUrl + "/{{{ FRAMEWORK_FILENAME }}}",
+#if USE_WASM
+      codeUrl: buildUrl + "/{{{ CODE_FILENAME }}}",
+#endif
+#if MEMORY_FILENAME
+      memoryUrl: buildUrl + "/{{{ MEMORY_FILENAME }}}",
+#endif
+#if SYMBOLS_FILENAME
+      symbolsUrl: buildUrl + "/{{{ SYMBOLS_FILENAME }}}",
+#endif
+      streamingAssetsUrl: "StreamingAssets",
+      companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
+      productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
+      productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
+    };
+
+    var canvas = document.querySelector("#unity-canvas");
+    var fill = document.querySelector("#unity-progress-fill");
+    var loading = document.querySelector("#unity-loading");
+
+    // Report the engine download to the portal's loading bar (optional telemetry; failures are ignored).
+    var zoko = window.ZokoGames && window.ZokoGames.SDK ? window.ZokoGames.SDK : null;
+    var zokoReady = zoko ? zoko.init().then(function () {
+      if (zoko.environment !== "disabled") return zoko.game.loadingStart();
+    }).catch(function () {}) : Promise.resolve();
+
+    var script = document.createElement("script");
+    script.src = loaderUrl;
+    script.onload = function () {
+      createUnityInstance(canvas, config, function (progress) {
+        fill.style.width = (progress * 100) + "%";
+        if (zoko && zoko.environment !== "disabled") zoko.game.loadingProgress(Math.round(progress * 100)).catch(function () {});
+      }).then(function (unityInstance) {
+        window.unityInstance = unityInstance;
+        loading.style.display = "none";
+        zokoReady.then(function () {
+          if (zoko && zoko.environment !== "disabled") return zoko.game.loadingStop();
+        }).catch(function () {});
+      }).catch(function (message) {
+        loading.textContent = String(message);
+      });
+    };
+    document.body.appendChild(script);
+  </script>
+</body>
+</html>
