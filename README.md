@@ -4,7 +4,7 @@ UPM package `com.zokogames.sdk` (Unity 2021.3 or newer). A static facade, `ZokoS
 `window.ZokoGames.SDK` (`https://sdk.zokogames.com/zokogames-sdk-v1.js`) through a `.jslib` bridge. In the Editor and in every
 non-WebGL player a built-in simulator answers instead, so the game runs unchanged without a browser.
 
-Version 1.8.0 (written against the JavaScript SDK `@zoko/sdk` 1.8.0). Changes: [CHANGELOG.md](./CHANGELOG.md).
+Version 1.8.2 (written against the JavaScript SDK `@zoko/sdk` 1.8.0). Changes: [CHANGELOG.md](./CHANGELOG.md).
 Status: run in Unity 6 (6000.3.28f1). Embedded in a full URP game, the package imported and compiled with no warnings, and a
 release WebGL build (Brotli, IL2CPP high stripping) ran in Chrome against the production SDK: in the portal frame as a guest and
 in local mode, with init, loading progress, gameplay start and stop, settings and the mute switch, cloud save and restore,
@@ -16,6 +16,8 @@ support.
 
 | Wrapper | ZokoGames SDK |
 |---|---|
+| 1.8.2 | @zoko/sdk 1.8.0 |
+| 1.8.1 | @zoko/sdk 1.8.0 |
 | 1.8.0 | @zoko/sdk 1.8.0 |
 | 1.7.0 | @zoko/sdk 1.7.0 |
 | 1.6.4 | @zoko/sdk 1.6.1 |

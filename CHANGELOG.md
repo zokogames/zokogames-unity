@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.8.2 (2026-11-26)
+
+- Fix: the stop call for the IndexedDB mirror now also stops a mirror started by the template/shell option `ZOKO_MIRROR_INDEXEDDB` (before, it only stopped a mirror started through the bridge and returned ok without stopping the template's).
+
 ## 1.8.1 (2026-11-26)
 
 - Fix: Unity 2021.3 failed the WebGL build with `Preprocessor error "ReferenceError: ZOKO_MIRROR_INDEXEDDB is not defined"` when the project did not define the template variable (Unity 6 reads an undefined variable as empty). The ZokoGames WebGL template now treats a missing `ZOKO_MIRROR_INDEXEDDB` as off. Checked with Unity 2021.3.45f2 and 6000.3.28f1 (package compile and the starter kit WebGL build).
