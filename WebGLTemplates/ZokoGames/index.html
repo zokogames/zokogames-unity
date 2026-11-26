@@ -56,9 +56,9 @@
     }).catch(function () {}) : Promise.resolve();
 
     // Cloud save for PlayerPrefs and Application.persistentDataPath (IndexedDB "/idbfs"), JS SDK 1.7.0 data.mirrorIndexedDB.
-    // Opt-in: set the template variable ZOKO_MIRROR_INDEXEDDB to true (Player Settings > Resolution and Presentation). The
+    // Opt-in (the typeof guard is needed: Unity 2021 throws on an undefined template variable): set ZOKO_MIRROR_INDEXEDDB to true (Player Settings > Resolution and Presentation). The
     // restore must finish before Unity mounts its file system, so the engine starts only after it (or after it failed).
-    var zokoMirror = "{{{ ZOKO_MIRROR_INDEXEDDB }}}" === "true" || window.ZOKO_MIRROR_INDEXEDDB === true;
+    var zokoMirror = "{{{ typeof ZOKO_MIRROR_INDEXEDDB === 'undefined' ? '' : ZOKO_MIRROR_INDEXEDDB }}}" === "true" || window.ZOKO_MIRROR_INDEXEDDB === true;
     var zokoBoot = !zokoMirror ? Promise.resolve() : zokoReady.then(function () {
       if (!zoko || zoko.environment === "disabled" || typeof zoko.data.mirrorIndexedDB !== "function") return;
       return zoko.data.mirrorIndexedDB().then(function (stop) { window.zokoStopMirrorIndexedDB = stop; });

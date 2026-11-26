@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.8.1 (2026-11-26)
+
+- Fix: Unity 2021.3 failed the WebGL build with `Preprocessor error "ReferenceError: ZOKO_MIRROR_INDEXEDDB is not defined"` when the project did not define the template variable (Unity 6 reads an undefined variable as empty). The ZokoGames WebGL template now treats a missing `ZOKO_MIRROR_INDEXEDDB` as off. Checked with Unity 2021.3.45f2 and 6000.3.28f1 (package compile and the starter kit WebGL build).
+- Still written against SDK 1.8.0 (`ZokoSDK.Version` is `"1.8.0"`).
+
 ## 1.8.0 (2026-11-25)
 
 - Fix: the editor simulator rejected an empty `encryptedScore` in `submitScore` with `invalidArgument`; like the SDK, it now accepts it (the value for a leaderboard without an encryption key).
