@@ -16,7 +16,7 @@ namespace ZokoGames
     public static class ZokoSDK
     {
         /// <summary>Wrapper version; matches the JavaScript SDK release it was written against.</summary>
-        public const string Version = "1.7.0";
+        public const string Version = "1.8.0";
 
         static IZokoTransport _transport;
         static bool _initialized;
@@ -29,6 +29,7 @@ namespace ZokoGames
         static bool _instantMultiplayer;
         static bool _offline;
         static bool _storeAvailable;
+        static string _gameId = "";
         static bool _sandbox;
 
         public static bool IsInitialized { get { return _initialized; } }
@@ -60,6 +61,7 @@ namespace ZokoGames
             _instantMultiplayer = false;
             _offline = false;
             _storeAvailable = false;
+            _gameId = "";
             _sandbox = false;
             Environment = "disabled";
             IsQaTool = false;
@@ -106,6 +108,7 @@ namespace ZokoGames
                     _instantMultiplayer = ZokoJson.Bool(j, "isInstantMultiplayer");
                     _offline = ZokoJson.Bool(j, "isOffline");
                     _storeAvailable = ZokoJson.Bool(j, "storeAvailable");
+                    _gameId = ZokoJson.Str(j, "gameId", "");
                     _inviteParams = ToStringMap(ZokoJson.Get(j, "inviteParams"));
                     _initialized = true;
                     Ad.ApplyPortalMute();
@@ -375,6 +378,12 @@ namespace ZokoGames
             public static Task ClearBannerAsync(string id) { return VoidTask("banner.clearBanner", Args("id", id)); }
             public static void ClearAllBanners(Action<ZokoError> done = null) { SendVoid("banner.clearAllBanners", null, done); }
             public static Task ClearAllBannersAsync() { return VoidTask("banner.clearAllBanners", null); }
+            /// <summary>SDK 1.8.0: hide every banner without clearing it; <see cref="ShowAllBanners"/> brings them back.</summary>
+            public static void HideAllBanners(Action<ZokoError> done = null) { SendVoid("banner.hideAllBanners", null, done); }
+            public static Task HideAllBannersAsync() { return VoidTask("banner.hideAllBanners", null); }
+            /// <summary>SDK 1.8.0: show the banners hidden by <see cref="HideAllBanners"/>.</summary>
+            public static void ShowAllBanners(Action<ZokoError> done = null) { SendVoid("banner.showAllBanners", null, done); }
+            public static Task ShowAllBannersAsync() { return VoidTask("banner.showAllBanners", null); }
         }
 
         // ================================================================== Game
@@ -391,6 +400,8 @@ namespace ZokoGames
             /// <summary>Current portal-controlled settings.</summary>
             public static ZokoGameSettings Settings { get { return _settings; } }
             public static bool IsInstantMultiplayer { get { return _instantMultiplayer; } }
+            /// <summary>Read-only id the portal sends at init (JS: game.gameId, SDK 1.6.2). Empty before init or when the portal does not send it.</summary>
+            public static string GameId { get { return _gameId; } }
             /// <summary>True while the player has no connection (JS: game.isOffline). False on older SDKs and portals.</summary>
             public static bool IsOffline { get { return _offline; } }
             /// <summary>Parameters the game was launched with through an invite link, or null.</summary>
@@ -844,6 +855,16 @@ namespace ZokoGames
             {
                 return VoidTask("user.submitScore", Args("encryptedScore", encryptedScore, "score", score));
             }
+
+            /// <summary>SDK 1.8.0: seal a score with the leaderboard key; calls back the base64 payload to pass to <see cref="SubmitScore"/>. <c>userNotAuthenticated</c> for guests, <c>invalidArgument</c> for a bad score or key. <paramref name="earnedAt"/> is Unix milliseconds for a delayed copy; 0 means a live run.</summary>
+            public static void EncryptScore(double score, string key, Action<string, ZokoError> done, long earnedAt = 0)
+            {
+                Send<string>("user.encryptScore", Args("score", score, "key", key, "earnedAt", earnedAt), o => o as string ?? "", done);
+            }
+            public static Task<string> EncryptScoreAsync(double score, string key, long earnedAt = 0)
+            {
+                return ToTask<string>(cb => EncryptScore(score, key, cb, earnedAt));
+            }
         }
 
         // ================================================================== Data
@@ -936,6 +957,16 @@ namespace ZokoGames
             public static void StopMirrorLocalStorage()
             {
                 var r = Sync("data.stopMirrorLocalStorage", null);
+                LastError = r.Ok ? null : r.Error;
+            }
+
+            /// <summary>
+            /// Stop the IndexedDB mirror started by the WebGL template variable <c>ZOKO_MIRROR_INDEXEDDB</c> (JS: the stop function of
+            /// <c>data.mirrorIndexedDB</c>, SDK 1.7.0). A no-op in the Editor and on non-WebGL players.
+            /// </summary>
+            public static void StopMirrorIndexedDB()
+            {
+                var r = Sync("data.stopMirrorIndexedDB", null);
                 LastError = r.Ok ? null : r.Error;
             }
 

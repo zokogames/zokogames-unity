@@ -88,6 +88,17 @@ public class ZokoDemo : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.T))
             ZokoSDK.User.GetUserToken((token, err) => Debug.Log(err != null ? err.ToString() : "token " + token));
 
+        if (Input.GetKeyDown(KeyCode.E))
+            ZokoSDK.User.EncryptScore(100, "demo-board-key", (payload, err) =>
+            {
+                if (err != null) { Debug.Log(err.ToString()); return; }
+                Debug.Log("encrypted score " + payload);
+                ZokoSDK.User.SubmitScore(payload, 100, e => { if (e != null) Debug.LogWarning(e); });
+            });
+
+        if (Input.GetKeyDown(KeyCode.N)) ZokoSDK.Banner.HideAllBanners(err => Debug.Log(err != null ? err.ToString() : "banners hidden"));
+        if (Input.GetKeyDown(KeyCode.J)) ZokoSDK.Banner.ShowAllBanners(err => Debug.Log(err != null ? err.ToString() : "banners shown"));
+
         if (Input.GetKeyDown(KeyCode.S))
         {
             ZokoSDK.Data.SetFloat("volume", 0.5f);

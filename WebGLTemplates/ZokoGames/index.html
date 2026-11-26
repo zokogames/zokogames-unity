@@ -55,10 +55,19 @@
       if (zoko.environment !== "disabled") return zoko.game.loadingStart();
     }).catch(function () {}) : Promise.resolve();
 
+    // Cloud save for PlayerPrefs and Application.persistentDataPath (IndexedDB "/idbfs"), JS SDK 1.7.0 data.mirrorIndexedDB.
+    // Opt-in: set the template variable ZOKO_MIRROR_INDEXEDDB to true (Player Settings > Resolution and Presentation). The
+    // restore must finish before Unity mounts its file system, so the engine starts only after it (or after it failed).
+    var zokoMirror = "{{{ ZOKO_MIRROR_INDEXEDDB }}}" === "true" || window.ZOKO_MIRROR_INDEXEDDB === true;
+    var zokoBoot = !zokoMirror ? Promise.resolve() : zokoReady.then(function () {
+      if (!zoko || zoko.environment === "disabled" || typeof zoko.data.mirrorIndexedDB !== "function") return;
+      return zoko.data.mirrorIndexedDB().then(function (stop) { window.zokoStopMirrorIndexedDB = stop; });
+    }).catch(function (e) { console.error("[ZokoGames] mirrorIndexedDB", e); });
+
     var script = document.createElement("script");
     script.src = loaderUrl;
     script.onload = function () {
-      createUnityInstance(canvas, config, function (progress) {
+      zokoBoot.then(function () { return createUnityInstance(canvas, config, function (progress) {
         fill.style.width = (progress * 100) + "%";
         if (zoko && zoko.environment !== "disabled") zoko.game.loadingProgress(Math.round(progress * 100)).catch(function () {});
       }).then(function (unityInstance) {
@@ -67,7 +76,7 @@
         zokoReady.then(function () {
           if (zoko && zoko.environment !== "disabled") return zoko.game.loadingStop();
         }).catch(function () {});
-      }).catch(function (message) {
+      }); }).catch(function (message) {
         loading.textContent = String(message);
       });
     };

@@ -1,7 +1,7 @@
 {
   "name": "com.zokogames.sdk",
   "displayName": "ZokoGames SDK",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "Unity WebGL wrapper for the ZokoGames JavaScript SDK: ads, banners, game events, users, cloud save and analytics, with an editor simulator.",
   "license": "MIT",
   "keywords": [

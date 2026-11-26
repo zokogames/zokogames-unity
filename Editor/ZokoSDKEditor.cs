@@ -38,7 +38,18 @@ namespace ZokoGames.Editor
             // Unity maps "Packages/<name>/..." to the package's real folder (embedded, added from disk or cached).
             string src = Path.GetFullPath("Packages/com.zokogames.sdk/WebGLTemplates/ZokoGames");
             string dst = Path.GetFullPath("Assets/WebGLTemplates/ZokoGames");
-            if (!Directory.Exists(src)) { Debug.LogError("[ZokoGames] Template folder not found: " + src); return; }
+            if (!Directory.Exists(src))
+            {
+                // Imported from the .unitypackage: the template already sits in Assets/WebGLTemplates, so only select it.
+                if (File.Exists(Path.Combine(dst, "index.html")))
+                {
+                    PlayerSettings.WebGL.template = "PROJECT:ZokoGames";
+                    Debug.Log("[ZokoGames] WebGL template selected (Player Settings > Resolution and Presentation).");
+                    return;
+                }
+                Debug.LogError("[ZokoGames] Template folder not found: " + src);
+                return;
+            }
             Directory.CreateDirectory(dst);
             string prefix = src.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
             foreach (var file in Directory.GetFiles(src, "*", SearchOption.AllDirectories))

@@ -18,6 +18,7 @@ mergeInto(LibraryManager.library, {
    * SDK 1.4.0 calls: game.reportChat {report}; game.setScreenshotProvider {enabled} + the global event screenshotRequest, which the
    * engine answers with game.answerScreenshot {dataUrl} (a data:image/... URL, or null when it cannot capture; the SDK waits 3 s);
    * data.mirrorLocalStorage {keys?, prefix?, pattern?} (+ data.stopMirrorLocalStorage), failures arrive as the global event mirrorError.
+   * SDK 1.7.0: data.mirrorIndexedDB {databases?} resolves after the restore (+ data.stopMirrorIndexedDB); init snapshot carries gameId.
    * Errors are always plain { code, message, containerId? } objects.
    * Banner rectangles arrive as normalised { nx, ny, nw, nh } (0..1, top-left origin,
    * relative to the game canvas) and are mapped to a fixed-position container <div>.
@@ -74,6 +75,7 @@ mergeInto(LibraryManager.library, {
         isOffline: false,
         inviteParams: null,
         storeAvailable: false,
+        gameId: '',
         sdkVersion: s.version || (root.ZokoGames && root.ZokoGames.SDK_VERSION) || ''
       };
       if (s.environment === 'disabled') return out;
@@ -84,6 +86,8 @@ mergeInto(LibraryManager.library, {
       out.isOffline = !!s.game.isOffline;
       out.inviteParams = s.game.inviteParams;
       out.storeAvailable = !!(s.store && s.store.isAvailable);
+      // JS SDK 1.6.2+: the read-only game id the portal sends at init ('' on older SDKs and portals).
+      try { out.gameId = typeof s.game.gameId === 'string' ? s.game.gameId : ''; } catch (e) { out.gameId = ''; }
       return out;
     }
     /** getPurchaseToken is the primary name; older SDK builds only have the deprecated getXsollaUserToken. */
@@ -178,11 +182,19 @@ mergeInto(LibraryManager.library, {
     function stopMirror() {
       if (mirrorStop) { mirrorStop(); mirrorStop = null; }
     }
+    var idbStop = null;
+    function stopIdbMirror() {
+      if (idbStop) { idbStop(); idbStop = null; }
+    }
 
     function simple(mod, fn) {
       return function (a, ev, s) { return s[mod][fn](); };
     }
 
+    function since180(mod, name) {
+      if (typeof mod[name] !== 'function') throw { code: 'other', message: name + ' needs ZokoGames SDK 1.8.0 or newer' };
+      return function () { return mod[name].apply(mod, arguments); };
+    }
     function storeOf(s) {
       if (!s.store) throw { code: 'other', message: 'This SDK build has no store module' };
       return s.store;
@@ -252,6 +264,9 @@ mergeInto(LibraryManager.library, {
       'banner.clearAllBanners': function (a, ev, s) {
         return s.banner.clearAllBanners().then(removeAllContainers);
       },
+      // SDK 1.8.0: hide / show every banner without clearing it (the containers stay where they are).
+      'banner.hideAllBanners': function (a, ev, s) { return since180(s.banner, 'hideAllBanners')(); },
+      'banner.showAllBanners': function (a, ev, s) { return since180(s.banner, 'showAllBanners')(); },
       'game.gameplayStart': simple('game', 'gameplayStart'),
       'game.gameplayStop': simple('game', 'gameplayStop'),
       'game.loadingStart': simple('game', 'loadingStart'),
@@ -279,6 +294,19 @@ mergeInto(LibraryManager.library, {
       'user.showAccountLinkPrompt': function (a, ev, s) { return refocus(s.user.showAccountLinkPrompt()); },
       'user.submitScore': function (a, ev, s) {
         return s.user.submitScore({ encryptedScore: a.encryptedScore, score: a.score });
+      },
+      // SDK 1.7.0: mirror IndexedDB databases into the cloud save; resolves once the restore finished (await it before the game
+      // reads its saves). Unity and Godot mount their file system at startup: their HTML shells call the SDK before the engine starts.
+      'data.mirrorIndexedDB': function (a, ev, s) {
+        if (typeof s.data.mirrorIndexedDB !== 'function') throw { code: 'other', message: 'data.mirrorIndexedDB needs ZokoGames SDK 1.7.0 or newer' };
+        stopIdbMirror();
+        var o = { onError: function (e) { globalHandler('mirrorError', plainError(e)); } };
+        if (a.databases && a.databases.length) o.databases = a.databases;
+        return s.data.mirrorIndexedDB(o).then(function (stop) { idbStop = stop; return null; });
+      },
+      // SDK 1.8.0: seal a score with the board key; resolves the base64 payload for submitScore. earnedAt 0 / absent = a live run.
+      'user.encryptScore': function (a, ev, s) {
+        return since180(s.user, 'encryptScore')(a.score, a.key, absent(a.earnedAt) || a.earnedAt === 0 ? undefined : { earnedAt: a.earnedAt });
       },
       // SDK 1.7.0: fire-and-forget; resolves with nothing.
       'analytics.track': function (a, ev, s) { s.analytics.track(a.name, absent(a.params) ? undefined : a.params); return Promise.resolve(); },
@@ -346,6 +374,7 @@ mergeInto(LibraryManager.library, {
         return null;
       },
       'data.stopMirrorLocalStorage': function (a, s) { stopMirror(); return null; },
+      'data.stopMirrorIndexedDB': function (a, s) { stopIdbMirror(); return null; },
       'room.members': function (a, s) { return roomOf(s).members(); },
       'room.getState': function (a, s) { return roomOf(s).getState(); },
       'room.isHost': function (a, s) { return !!roomOf(s).isHost(); },

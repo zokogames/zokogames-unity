@@ -4,7 +4,7 @@ UPM package `com.zokogames.sdk` (Unity 2021.3 or newer). A static facade, `ZokoS
 `window.ZokoGames.SDK` (`https://sdk.zokogames.com/zokogames-sdk-v1.js`) through a `.jslib` bridge. In the Editor and in every
 non-WebGL player a built-in simulator answers instead, so the game runs unchanged without a browser.
 
-Version 1.7.0 (written against the JavaScript SDK `@zoko/sdk` 1.7.0). Changes: [CHANGELOG.md](./CHANGELOG.md).
+Version 1.8.0 (written against the JavaScript SDK `@zoko/sdk` 1.8.0). Changes: [CHANGELOG.md](./CHANGELOG.md).
 Status: run in Unity 6 (6000.3.28f1). Embedded in a full URP game, the package imported and compiled with no warnings, and a
 release WebGL build (Brotli, IL2CPP high stripping) ran in Chrome against the production SDK: in the portal frame as a guest and
 in local mode, with init, loading progress, gameplay start and stop, settings and the mute switch, cloud save and restore,
@@ -16,6 +16,7 @@ support.
 
 | Wrapper | ZokoGames SDK |
 |---|---|
+| 1.8.0 | @zoko/sdk 1.8.0 |
 | 1.7.0 | @zoko/sdk 1.7.0 |
 | 1.6.4 | @zoko/sdk 1.6.1 |
 | 1.6.3 | @zoko/sdk 1.6.0 |
@@ -36,6 +37,15 @@ support.
 `Application.runInBackground`: browsers throttle a hidden tab. Set `Application.runInBackground = true` (the sample scripts do) so timers, audio and network keep running while an ad overlay or another tab has focus; WebGL builds otherwise stop updating when the tab loses focus. Ads mute `AudioListener` automatically (`ZokoSDK.Ad.MuteAudioDuringAds`, default on) and restore it afterwards, and the portal's mute setting is applied to `AudioListener.pause` after init and on every change (`ZokoSDK.Ad.FollowPortalMute`, default on; set it false before `Init` to handle `Game.SettingsChanged` yourself). After an ad, a sign-in prompt or a checkout the bridge gives keyboard focus back to the canvas.
 
 ## Install
+
+Three routes; use one of them in a project, never two (they would define the same classes twice):
+
+- **`.unitypackage`** (simplest): download `zokogames-unity-<version>.unitypackage` from the console's Plugins page and open it, or
+  **Assets > Import Package > Custom Package**. It imports the plugin into `Assets/ZokoGames/` (samples in `Assets/ZokoGames/Samples/`)
+  and the WebGL template into `Assets/WebGLTemplates/ZokoGames/`; then select the template with **ZokoGames > Install WebGL Template**
+  (or in Player Settings) and skip steps 1, 2 and 4 below.
+- **OpenUPM**: `openupm add com.zokogames.sdk`, then steps 2 to 4.
+- **Package Manager from disk or git**, step 1 below, then steps 2 to 4.
 
 1. Package Manager > Add package from disk > `unity/package.json` from the download, or copy the folder into your project's
    `Packages/` folder (an embedded package). From 1.6.1 every file and folder ships with its `.meta` file (stable GUIDs,
@@ -117,6 +127,8 @@ Every member of the JavaScript SDK is available. Names follow C# PascalCase: `SD
 | `banner.requestResponsiveBanner` | `Banner.RequestResponsiveBanner(id, screenRect, cb)` / `RequestResponsiveBannerAsync` |  |
 | `banner.clearBanner` | `Banner.ClearBanner(id, cb)` / `ClearBannerAsync` |  |
 | `banner.clearAllBanners` | `Banner.ClearAllBanners(cb)` / `ClearAllBannersAsync` |  |
+| `banner.hideAllBanners` | `Banner.HideAllBanners(cb)` / `HideAllBannersAsync` | Hides every banner without clearing it (SDK 1.8.0). |
+| `banner.showAllBanners` | `Banner.ShowAllBanners(cb)` / `ShowAllBannersAsync` | Shows the banners hidden by `HideAllBanners` (SDK 1.8.0). |
 | `game.settings` | `Game.Settings` | `ZokoGameSettings { MuteAudio, DisableChat, KidsMode }`. `KidsMode` (1.5.0) is false when the portal predates it: keep honouring `DisableChat`. |
 | `game.addSettingsChangeListener` | `Game.SettingsChanged += handler` | C# event. |
 | `game.removeSettingsChangeListener` | `Game.SettingsChanged -= handler` |  |
@@ -134,8 +146,8 @@ Every member of the JavaScript SDK is available. Names follow C# PascalCase: `SD
 | `game.isInstantMultiplayer` | `Game.IsInstantMultiplayer` |  |
 | `game.isInstantJoin` | `Game.IsInstantJoin` | Deprecated alias. |
 | `game.isOffline` | `Game.IsOffline` | `bool`; false on older SDKs and portals. |
-| `data.mirrorIndexedDB` | Not bound yet (JS only): the next plugin release adds it. | Added in SDK 1.7.0. Must run in the page before the engine starts (the restore finishes before the game reads its files), so it is not a thin pass-through; a game on the web can call `ZokoSDK.data.mirrorIndexedDB` from its own page script before loading the engine. |
-| `game.gameId` | Not bound yet (JS only): the next plugin release adds it. | Read-only id the portal sends at init (JS SDK 1.6.2). |
+| `data.mirrorIndexedDB` | WebGL template variable `ZOKO_MIRROR_INDEXEDDB` = true (mirrors /idbfs: PlayerPrefs and persistentDataPath; restores before Unity starts); `ZokoSDK.Data.StopMirrorIndexedDB()` stops it | Added in SDK 1.7.0. See "Cloud save for PlayerPrefs (IndexedDB mirror)" below. |
+| `game.gameId` | `ZokoSDK.Game.GameId` | Read-only id the portal sends at init (JS SDK 1.6.2); empty before init. The Editor mock returns `simulated-game`. |
 | `game.addOfflineListener` | `Game.OfflineChanged += handler` | C# event, `Action<bool>` with the new value. |
 | `game.removeOfflineListener` | `Game.OfflineChanged -= handler` |  |
 | `game.updateRoom` | `Game.UpdateRoom(ZokoRoomUpdate, cb)` / `...Async` | Leave a field null to keep it unchanged. |
@@ -181,10 +193,11 @@ Every member of the JavaScript SDK is available. Names follow C# PascalCase: `SD
 | `user.removeAuthListener` | `User.AuthChanged -= handler` |  |
 | `user.showAccountLinkPrompt` | `User.ShowAccountLinkPrompt(cb)` / `...Async` | Calls back true for "yes". |
 | `user.submitScore` | `User.SubmitScore(encryptedScore, score, cb)` / `...Async` |  |
+| `user.encryptScore` | `User.EncryptScore(score, key, cb, earnedAt)` / `EncryptScoreAsync(score, key, earnedAt)` | SDK 1.8.0. Resolves the base64 payload for `SubmitScore`; `userNotAuthenticated` for guests, `invalidArgument` for a bad score or key. `earnedAt` is Unix ms for a delayed copy; 0 is a live run. |
 | `user.getXsollaUserToken` | `User.GetXsollaUserToken(cb)` / `...Async` | Deprecated alias of `Store.GetPurchaseToken`. |
 | `ERROR_CODES` | `ZokoErrorCodes.Ad` / `Banner` / `User` / `Data` / `Store` / `Room` / `General` | `const string` codes plus an `All` array per module; `ZokoError.Is(code)`. |
 | `ERROR_CODE_DESCRIPTIONS` | Error codes table below | Not shipped as runtime text; show your own message per code. |
-| `SDK_VERSION` | `ZokoSDK.Version` | The JS SDK release this wrapper was written against (`1.7.0`). |
+| `SDK_VERSION` | `ZokoSDK.Version` | The JS SDK release this wrapper was written against (`1.8.0`). |
 | `data.getItem` | `Data.GetItem(key)`, `GetString` / `GetInt` / `GetFloat` | PlayerPrefs-shaped; also `HasKey`. |
 | `data.setItem` | `Data.SetItem(key, value)`, `SetString` / `SetInt` / `SetFloat` | Failures set `Data.LastError`. |
 | `data.removeItem` | `Data.RemoveItem(key)` / `DeleteKey(key)` |  |
@@ -205,6 +218,25 @@ Every member of the JavaScript SDK is available. Names follow C# PascalCase: `SD
 | `achievements.unlock` | `Achievements.Unlock(key, cb)` / `UnlockAsync(key)` | `ZokoUnlockResult`; guests and unknown keys give `Ok` false with a `Reason`. |
 | `achievements.onUnlock` | `Achievements.OnUnlock` (event `Action<ZokoAchievement>`) | Raised when an achievement unlocks. |
 
+### Leaderboard score encryption
+
+Seal a score with your board key and submit it (SDK 1.8.0, no hand-written AES needed):
+
+```csharp
+string payload = await ZokoSDK.User.EncryptScoreAsync(score, KEY);
+await ZokoSDK.User.SubmitScoreAsync(payload, score);
+```
+
+For a score earned offline pass `earnedAt` (Unix ms) as the third argument. Guests get `userNotAuthenticated`. On a portal older than SDK 1.8.0 the call fails with `other`; seal the score yourself with the board's documented scheme there.
+
+### Cloud save for PlayerPrefs (IndexedDB mirror)
+
+WebGL keeps `PlayerPrefs` and `Application.persistentDataPath` files in the browser's IndexedDB (`/idbfs`). To save them to the player's cloud save, set the WebGL template variable `ZOKO_MIRROR_INDEXEDDB` to `true` in Player Settings > Resolution and Presentation (template `ZokoGames`), or set `window.ZOKO_MIRROR_INDEXEDDB = true` in the page before the loader runs. The template restores the cloud copy before Unity starts, so the game reads the restored files on its first frame.
+
+- `PlayerPrefs.Save()` writes are picked up within a few seconds and uploaded in the background.
+- The mirrored data may not exceed 1 MiB in total.
+- The data module must be enabled for the game in the developer console, otherwise the mirror does nothing.
+- `ZokoSDK.Data.StopMirrorIndexedDB()` stops mirroring.
 
 ## Room data channel
 

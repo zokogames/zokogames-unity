@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.8.0 (2026-11-25)
+
+- Fix: the editor simulator rejected an empty `encryptedScore` in `submitScore` with `invalidArgument`; like the SDK, it now accepts it (the value for a leaderboard without an encryption key).
+- Hide and show all banners: `ZokoSDK.Banner.HideAllBanners(cb)` / `HideAllBannersAsync()` and `ShowAllBanners(cb)` / `ShowAllBannersAsync()` for `banner.hideAllBanners` / `showAllBanners`. Banners are hidden, not cleared.
+- Score encryption: `ZokoSDK.User.EncryptScore(score, key, cb, earnedAt)` / `EncryptScoreAsync(score, key, earnedAt)` for `user.encryptScore`. It resolves the base64 payload to pass to `SubmitScore`; guests get `userNotAuthenticated`, a bad score or key `invalidArgument`; `earnedAt` (Unix ms) seals a delayed copy, 0 is a live run. The local mock implements all three calls.
+- `ZokoSDK.Game.GameId` for `game.gameId` (empty before init; the Editor mock returns `simulated-game`).
+- IndexedDB mirror for `PlayerPrefs` and `persistentDataPath`: the WebGL template variable `ZOKO_MIRROR_INDEXEDDB` = true (or `window.ZOKO_MIRROR_INDEXEDDB = true`) restores the cloud copy before Unity starts and mirrors later writes (`data.mirrorIndexedDB`); `ZokoSDK.Data.StopMirrorIndexedDB()` stops it (no-op in the Editor).
+- The plugin now targets the JavaScript SDK 1.8.0; the wrapper constant `ZokoSDK.Version` now reads `"1.8.0"`.
+
 ## 1.7.0 (2026-11-23)
 
 - Room left event: `ZokoSDK.Game.Room.Left += (reason, roomId) => ...` for `game.room.addLeftListener` / `removeLeftListener`. The reason is `left`, `kicked`, `closed` or `disconnected`; the room id may be null.

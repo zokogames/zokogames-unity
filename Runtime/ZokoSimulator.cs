@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text;
 using UnityEngine;
 
@@ -135,6 +136,7 @@ namespace ZokoGames
                     Log("data.mirrorLocalStorage ignored (no localStorage in the Editor or on this platform)");
                     return ZokoResponse.Success(null);
                 case "data.stopMirrorLocalStorage": return ZokoResponse.Success(null);
+                case "data.stopMirrorIndexedDB": return ZokoResponse.Success(null);
                 case "room.selfId": return ZokoResponse.Success(RoomSelfId);
                 case "room.isHost": return ZokoResponse.Success(true);
                 case "room.members":
@@ -176,7 +178,7 @@ namespace ZokoGames
                     {
                         { "environment", "disabled" }, { "isQaTool", false }, { "settings", SettingsJson() },
                         { "systemInfo", null }, { "isUserAccountAvailable", false }, { "isInstantMultiplayer", false }, { "isOffline", false },
-                        { "inviteParams", null }, { "storeAvailable", false },
+                        { "inviteParams", null }, { "storeAvailable", false }, { "gameId", "" },
                     }));
                     yield break;
                 }
@@ -199,6 +201,7 @@ namespace ZokoGames
                     { "isOffline", _s.offline },
                     { "inviteParams", null },
                     { "storeAvailable", _s.storeAvailable },
+                    { "gameId", "simulated-game" },
                 }));
                 yield break;
             }
@@ -273,6 +276,15 @@ namespace ZokoGames
                 case "banner.clearAllBanners":
                     _banners.Clear();
                     _bannerAt.Clear();
+                    done(ZokoResponse.Success(null));
+                    yield break;
+
+                case "banner.hideAllBanners":
+                    Debug.Log("[ZokoSimulator] banner.hideAllBanners: all banners hidden");
+                    done(ZokoResponse.Success(null));
+                    yield break;
+                case "banner.showAllBanners":
+                    Debug.Log("[ZokoSimulator] banner.showAllBanners: all banners shown");
                     done(ZokoResponse.Success(null));
                     yield break;
 
@@ -360,6 +372,18 @@ namespace ZokoGames
                     if (!_loggedIn) { done(ZokoResponse.Fail("userNotAuthenticated", "No user is signed in")); yield break; }
                     done(ZokoResponse.Success("simulated." + Convert.ToBase64String(Encoding.UTF8.GetBytes(_s.userId)) + ".unsigned"));
                     yield break;
+                case "user.encryptScore":
+                {
+                    if (!_loggedIn) { done(ZokoResponse.Fail("userNotAuthenticated", "No user is signed in")); yield break; }
+                    double score = ZokoJson.Num(a, "score");
+                    if (double.IsNaN(score) || double.IsInfinity(score)) { done(Invalid("score must be a finite number")); yield break; }
+                    if (string.IsNullOrEmpty(ZokoJson.Str(a, "key"))) { done(Invalid("key must be a non-empty string")); yield break; }
+                    long earnedAt = (long)ZokoJson.Num(a, "earnedAt");
+                    if (earnedAt <= 0) earnedAt = (long)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
+                    done(ZokoResponse.Success("simulated-score." + Convert.ToBase64String(Encoding.UTF8.GetBytes(
+                        score.ToString("R", CultureInfo.InvariantCulture) + "|" + earnedAt))));
+                    yield break;
+                }
                 case "store.getPurchaseToken":
                 case "user.getXsollaUserToken":
                     if (!_loggedIn) { done(ZokoResponse.Fail("userNotAuthenticated", "No user is signed in")); yield break; }
@@ -380,7 +404,7 @@ namespace ZokoGames
                     done(ZokoResponse.Success(new Dictionary<string, object> { { "response", _loggedIn ? "yes" : "no" } }));
                     yield break;
                 case "user.submitScore":
-                    done(ZokoJson.Str(a, "encryptedScore") == "" ? Invalid("submitScore needs { encryptedScore: string, score: number }") : ZokoResponse.Success(null));
+                    done(ZokoJson.Str(a, "encryptedScore", null) == null ? Invalid("submitScore needs { encryptedScore: string, score: number }") : ZokoResponse.Success(null));
                     yield break;
 
                 case "store.getCatalogItems":
