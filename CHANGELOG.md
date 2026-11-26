@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.8.3 (2026-11-26)
+
+- Written against JavaScript SDK 1.8.1 (scores sealed on the portal's clock); no API change.
+
 ## 1.8.2 (2026-11-26)
 
 - Fix: the stop call for the IndexedDB mirror now also stops a mirror started by the template/shell option `ZOKO_MIRROR_INDEXEDDB` (before, it only stopped a mirror started through the bridge and returned ok without stopping the template's).

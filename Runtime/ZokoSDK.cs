@@ -16,7 +16,7 @@ namespace ZokoGames
     public static class ZokoSDK
     {
         /// <summary>Wrapper version; matches the JavaScript SDK release it was written against.</summary>
-        public const string Version = "1.8.0";
+        public const string Version = "1.8.1";
 
         static IZokoTransport _transport;
         static bool _initialized;
